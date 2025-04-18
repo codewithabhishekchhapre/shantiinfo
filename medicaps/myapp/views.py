@@ -3,68 +3,63 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.template import loader
 from django.http import JsonResponse
+import json
+from .models import User
 
-def members(request):
-    return HttpResponse("Hello world!")
-
-def student(request):
-     return HttpResponse("Hello student !")
-def signup_page(request):
-    template = loader.get_template('signup.html')
-    return  HttpResponse(template.render());
- 
-def htmlpage(request):
-    template = loader.get_template('new.html')
-    return  HttpResponse(template.render());
-def home(request):
-    template = loader.get_template('index.html')
-    return  HttpResponse(template.render());
-
-
-userdata={
-   
-}
-
+# username,email,password,mobile,is_verified,role,
 @csrf_exempt
+def register_view(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            username = data.get('username', '').strip()
+            email = data.get('email', '').strip()
+            password = data.get('password', '').strip()
+            mobile = data.get('mobile', '').strip()
+            role = data.get('role', '').strip()
 
-def logindata(request):
-    if request.method=="POST":
-        email=request.POST.get("email")
-        password=request.POST.get("password")
-        if userdata["email"]==email and userdata["password"]==password:
-            
-            return JsonResponse(
-                {"is_login":"true",
-                 "is_verified":"false",
-                 "message":"Login Success"}
-                )
-        else:
-            return JsonResponse(
-                {"is_login":"false",
-                 "is_verified":"false",
-                 "message":"invalid email or password"}
-                )
-    
-    return JsonResponse(
-        {
-            "is_login":"false",
-            "is_verified":"false",
-            "message":"invalid request"
-        }
-    )
+            errors = {}
 
-@csrf_exempt
+            if not email:
+                errors['email'] = 'Email is required.'
+            if not password:
+                errors['password'] = 'Password is required.'
+            if not mobile:
+                errors['mobile'] = 'Mobile number is required.'
+            if not role:
+                errors['role'] = 'Role is required.'
 
-def signupdata(request):
-    if request.method=="POST":
-        name=request.POST.get("username")
-        email=request.POST.get("email")
-        password=request.POST.get("password")
-        userdata["username"]=name
-        userdata["email"]=email
-        userdata["password"]=password
-        
-        print(userdata)
-        return HttpResponse(f"username is: and email is ")
-    
-    return HttpResponse("Invalid request")
+            if errors:
+                return JsonResponse({'status': False, 'errors': errors}, status=400)
+
+            # # Check if email already exists
+            if User.objects.filter(email=email).exists():
+                return JsonResponse({'status': False, 'message': 'Email already exists.'}, status=409)
+
+            # Save the user
+            User.objects.create(
+                username=username,
+                email=email,
+                password=password,  # Optionally hash this
+                mobile=mobile,
+                role=role
+            )
+
+            return JsonResponse({'status': True, 'message': 'User registered successfully'}, status=201)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': False, 'message': 'Invalid JSON'}, status=400)
+
+    return JsonResponse({'status': False, 'message': 'Only POST method allowed'}, status=405)
+
+
+
+def get_all_users(request):
+    if request.method == 'GET':
+        users = User.objects.all().values(
+            'id', 'username', 'email', 'mobile', 'is_verified', 'role'
+        )
+        user_list = list(users)  # Convert queryset to list of dicts
+        return JsonResponse({'status': True, 'users': user_list}, status=200)
+    else:
+        return JsonResponse({'status': False, 'message': 'Only GET method allowed'}, status=405)
