@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
-SENDGRID_API_KEY = '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'
+SENDGRID_API_KEY = "your api key"
 FROM_EMAIL = 'abhishekgurjar5020@gmail.com'  # This must be verified in SendGrid
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
